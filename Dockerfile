@@ -1,7 +1,7 @@
 ARG BUILD_NAME=journey-planner
 FROM ${BUILD_NAME}-gtfs-data-raw AS gtfs
 
-FROM python:3
+FROM python:3-alpine
 
 WORKDIR /data
 COPY . .

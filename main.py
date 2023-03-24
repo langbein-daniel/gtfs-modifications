@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import csv
+import re
 import sys
 import zipfile
 from io import TextIOWrapper, StringIO
@@ -17,7 +18,8 @@ def main():
     gtfs_vgn_modified = Path(argv[2])
 
     modifications = {
-        'trips.txt': add_bikes_allowed
+        'trips.txt': add_bikes_allowed,
+        'routes.txt': escape_double_quotes,
     }
     modify_zip_file(gtfs_vgn, gtfs_vgn_modified, modifications)
 
@@ -105,6 +107,24 @@ def add_bikes_allowed(trips: IO[bytes], exists_ok: bool = False) -> str:
     write_csv(f, data)
 
     return f.getvalue()
+
+
+def escape_double_quotes(file: IO[bytes]) -> str:
+    string = TextIOWrapper(file, 'utf-8').read()
+
+    # Example:
+    #   "2-11-B-j23-1","","RB 11","Fürth  -  Zirndorf  -  Cadolzburg  ( "Rangaubahn" )","2","2A9F6F","000000"
+    # Will be changed into
+    #   "2-11-B-j23-1","","RB 11","Fürth  -  Zirndorf  -  Cadolzburg  ( ""Rangaubahn"" )","2","2A9F6F","000000"
+
+    # All double-quotes that are not escaped and don't stand before or after a comma.
+    pattern = r'([^,^"^\n])"([^,^"^\n])'
+    # Escape the double-quote by adding a second double-quote.
+    escaped_string, ct = re.subn(pattern, r'\1""\2', string)
+
+    print(f'Escaped {ct} occurrences of ".')
+
+    return escaped_string
 
 
 def parse_csv(file: Iterable[str]) -> list[list[str]]:

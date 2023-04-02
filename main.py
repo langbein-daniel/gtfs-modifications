@@ -21,7 +21,7 @@ def main():
     parser.add_argument('--bikes-allowed',
                         help='Adds the column `bikes_allowed` and sets all of its values to true',
                         dest='bikes_allowed',
-                        default=True,
+                        default=False,
                         type=bool,
                         choices=[True, False])
     parser.add_argument('--bikes-allowed-exists-ok',
@@ -33,7 +33,7 @@ def main():
     parser.add_argument('--escape-double-quotes-in-routes',
                         help='Fixes an invalid routes.txt file with unescaped double quotes',
                         dest='escape_double_quotes_in_routes',
-                        default=True,
+                        default=False,
                         type=bool,
                         choices=[True, False])
     args = parser.parse_args()

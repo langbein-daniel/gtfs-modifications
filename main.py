@@ -1,27 +1,50 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import argparse
 import csv
 import re
-import sys
 import zipfile
 from io import TextIOWrapper, StringIO
 from pathlib import Path
-from sys import argv
 
 from typing import IO, Iterable, Callable
 
 
 def main():
-    if len(argv) != 3:
-        print('Usage: gtfs-input.zip gtfs-output.zip', file=sys.stderr)
-    gtfs_vgn = Path(argv[1])
-    gtfs_vgn_modified = Path(argv[2])
+    parser = argparse.ArgumentParser(description='Modifies the source GTFS and saves it as target')
+    parser.add_argument('source_path',
+                        help='Source GTFS zip file',
+                        type=Path)
+    parser.add_argument('target_path',
+                        help='Target GTFS zip file',
+                        type=Path)
+    parser.add_argument('--bikes-allowed',
+                        help='Adds the column `bikes_allowed` and sets all of its values to true',
+                        dest='bikes_allowed',
+                        default=True,
+                        type=bool,
+                        choices=[True, False])
+    parser.add_argument('--bikes-allowed-exists-ok',
+                        help='If the `bikes_allowed` column does already exist, don\'t raise an error and set all undefined values to true.',
+                        dest='exists_ok',
+                        default=False,
+                        type=bool,
+                        choices=[True, False])
+    parser.add_argument('--escape-double-quotes-in-routes',
+                        help='Fixes an invalid routes.txt file with unescaped double quotes',
+                        dest='escape_double_quotes_in_routes',
+                        default=True,
+                        type=bool,
+                        choices=[True, False])
+    args = parser.parse_args()
 
-    modifications = {
-        'trips.txt': add_bikes_allowed,
-        'routes.txt': escape_double_quotes,
-    }
-    modify_zip_file(gtfs_vgn, gtfs_vgn_modified, modifications)
+    modifications = {}
+    if args.bikes_allowed:
+        modifications['trips.txt'] = lambda file: add_bikes_allowed(file, exists_ok=args.exists_ok)
+    if args.escape_double_quotes_in_routes:
+        modifications['routes.txt'] = escape_double_quotes
+
+    modify_zip_file(args.source_path, args.target_path, modifications)
 
 
 def modify_zip_file(source: Path, target: Path, modifications: dict[str, Callable[[IO[bytes]], bytes | str]]) -> None:
@@ -29,14 +52,14 @@ def modify_zip_file(source: Path, target: Path, modifications: dict[str, Callabl
     Iterates over all files in `source` zip file.
 
     If a file has an entry in the `modifications` dict, the corresponding function is called with the
-    source file as argument. The result is then written to the `target` zip file.
+    source file as argument. The return value is then written to the `target` zip file.
 
     Otherwise, the file is copied to `target` zip file without modifications.
 
     :param source: Path to source zip file.
     :param target: Path to target zip file.
-    :param modifications: Dictionary containing the name of files to be modified and functions that perform the modifications.
-    :return:
+    :param modifications: Dictionary mapping the name of files to be modified to functions that perform the modifications.
+    :return: None
     """
     # Based on https://techoverflow.net/2020/11/11/how-to-modify-file-inside-a-zip-file-using-python/
 
@@ -60,12 +83,12 @@ def modify_zip_file(source: Path, target: Path, modifications: dict[str, Callabl
 
 def add_bikes_allowed(trips: IO[bytes], exists_ok: bool = False) -> str:
     """
-    Adds the column `bikes_allowed` to the CSV file and sets all of its values to true ('1').
+    Adds the column `bikes_allowed` to the CSV file and sets all of its values to true.
 
     By default, this method raises an error if the column does already exist.
 
     :param trips: CSV input
-    :param exists_ok: If the `bikes_allowed` column does already exist, don't raise an error and set all values to true ('1'). Default: False.
+    :param exists_ok: If the `bikes_allowed` column does already exist, don't raise an error and set all undefined values to true. Default: False.
     :return: CSV output
     """
 
@@ -81,24 +104,26 @@ def add_bikes_allowed(trips: IO[bytes], exists_ok: bool = False) -> str:
 
     if 'bikes_allowed' in header:
         if exists_ok:
-            print('The bikes_allowed column does already exist. Replacing undefined values with true.')
+            print('The bikes_allowed column does already exist. Replacing undefined with true.')
             bikes_allowed_idx = header.index('bikes_allowed')
             possible_values = ['', 0, 1, 2]
             replaced_ct = 0
             for row in data[1:]:
                 value = row[bikes_allowed_idx]
                 if value not in possible_values:
-                    raise ValueError(f'The value {value} is not one of the expected values {possible_values} for the bikes_allowed field.')
+                    raise ValueError(
+                        f'The value {value} is not one of the expected values {possible_values} for the bikes_allowed field.')
                 if value == 0:
                     # Value set to undefined.
                     # We set it to allowed.
                     row[bikes_allowed_idx] = '1'
                     replaced_ct += 1
-            print(f'Replaced {replaced_ct} undefined values from a total of {len(data[1:])}.')
+            print(f'{100 * len(data[1:]) / replaced_ct}% of the bikes_allowed entries were undefined.\n'
+                  f'{replaced_ct} undefined entries have been set to true.')
         else:
             raise ValueError('Expected the bikes_allowed column to be missing.')
     else:
-        print('Adding the bikes_allowed column and setting all values to true.')
+        print('There is no bikes_allowed column. Adding it with all values set to true.')
         header.append('bikes_allowed')
         for row in data[1:]:
             row.append('1')
@@ -110,6 +135,12 @@ def add_bikes_allowed(trips: IO[bytes], exists_ok: bool = False) -> str:
 
 
 def escape_double_quotes(file: IO[bytes]) -> str:
+    """
+    Fixes an invalid CSV files with unescaped double quotes.
+
+    :param file:
+    :return:
+    """
     string = TextIOWrapper(file, 'utf-8').read()
 
     # Example:

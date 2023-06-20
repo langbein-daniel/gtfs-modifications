@@ -119,13 +119,13 @@ def modify_zip_file(source: Path, target: Path, modifications: dict[str, Callabl
                         continue
                     elif isinstance(content, str) or isinstance(content, bytes):
                         # Write to target zip file.
-                        target_zf.writestr(zipinfo.filename, content)
+                        target_zf.writestr(zipinfo.filename, content, compress_type=8)
                     else:
                         raise ValueError()
                 else:
                     # Copy to target zip file without modifications.
                     print(f'Copying {zipinfo.filename} without modifications.')
-                    target_zf.writestr(zipinfo.filename, infile.read())
+                    target_zf.writestr(zipinfo.filename, infile.read(), compress_type=8)
 
 
 def add_bikes_allowed(trips_txt: str, exists_ok: bool = False) -> str:

@@ -21,14 +21,18 @@ def main():
                         type=Path,
                         metavar='DST_GTFS_ZIP')
     parser.add_argument('--bikes-allowed',
-                        help='Adds the column `bikes_allowed` and sets all of its values to true',
+                        help='Adds the column `bikes_allowed` and sets all of its values to true.'
+                             ' Raises an exception if the column does already exist.',
                         dest='bikes_allowed',
                         default=False,
                         type=bool,
                         choices=[True, False])
     parser.add_argument('--bikes-allowed-exists-ok',
-                        help='If the `bikes_allowed` column does already exist, don\'t raise an error'
-                             ' and set all undefined values to true.',
+                        help='This argument changes the behavior of `--bikes-allowed`.'
+                             ' If it is set to `True`,'
+                             ' then no exception is raised if the `bikes_allowed` column does already exist.'
+                             ' Instead, all undefined values of it are set to true and other existing values'
+                             ' are left as they are.',
                         dest='exists_ok',
                         default=False,
                         type=bool,
@@ -101,11 +105,13 @@ def add_bikes_allowed(trips: IO[bytes], exists_ok: bool = False) -> str:
     """
     Adds the column `bikes_allowed` to the CSV file and sets all of its values to true.
 
-    By default, this method raises an error if the column does already exist.
+    By default, this method raises an error if this column does already exist.
 
     :param trips: CSV input
-    :param exists_ok: If the `bikes_allowed` column does already exist,
-     don't raise an error and set all undefined values to true. Default: False.
+    :param exists_ok: If the `bikes_allowed` column does already exist, don't raise an error.
+     All undefined values of the `bikes_allowed` column are set to true.
+     Other values are left as they are.
+     Default: False.
     :return: CSV output
     """
 

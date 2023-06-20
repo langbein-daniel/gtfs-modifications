@@ -9,25 +9,30 @@ See [BikeTripPlanner README](https://github.com/langbein-daniel/BikeTripPlanner#
 ```
 usage: main.py [-h] [--bikes-allowed {True,False}]
                [--bikes-allowed-exists-ok {True,False}]
-               [--escape-double-quotes-in-routes {True,False}]
-               source_path target_path
+               [--escape-double-quotes TXT_FILENAME]
+               SRC_GTFS_ZIP DST_GTFS_ZIP
 
-Modifies the source GTFS and saves it as target
+Takes a source GTFS zip file, modifies it and saves it as zip
 
 positional arguments:
-  source_path           Source GTFS zip file
-  target_path           Target GTFS zip file
+  SRC_GTFS_ZIP          Source GTFS zip file
+  DST_GTFS_ZIP          Target GTFS zip file
 
 options:
   -h, --help            show this help message and exit
   --bikes-allowed {True,False}
                         Adds the column `bikes_allowed` and sets all of its
-                        values to true
+                        values to true. Raises an exception if the column does
+                        already exist.
   --bikes-allowed-exists-ok {True,False}
-                        If the `bikes_allowed` column does already exist,
-                        don't raise an error and set all undefined values to
-                        true.
-  --escape-double-quotes-in-routes {True,False}
-                        Fixes an invalid routes.txt file with unescaped double
-                        quotes
+                        This argument changes the behavior of `--bikes-
+                        allowed`. If it is set to `True`, then no exception is
+                        raised if the `bikes_allowed` column does already
+                        exist. Instead, all undefined values of it are set to
+                        true and other existing values are left as they are.
+  --escape-double-quotes TXT_FILENAME
+                        This argument takes the name of a .txt file from the
+                        GTFS zip file. Unescaped double quotes in that file
+                        will be corrected. This argument can be given multiple
+                        times (for different files).
 ```

@@ -175,8 +175,12 @@ def add_bikes_allowed(trips_txt: str, exists_ok: bool = False) -> str:
                     # We set it to allowed.
                     row[bikes_allowed_idx] = '1'
                     replaced_ct += 1
-            print(f'{100 * len(data[1:]) / replaced_ct}% of the bikes_allowed entries were undefined.\n'
-                  f'{replaced_ct} undefined entries have been set to true.')
+
+            if replaced_ct == 0:
+                print('None of the bikes_allowed entries were undefined.')
+            else:
+                print(f'{100 * len(data[1:]) / replaced_ct}% of the bikes_allowed entries were undefined.\n'
+                      f'{replaced_ct} undefined entries have been set to true.')
         else:
             raise ValueError('Expected the bikes_allowed column to be missing.')
     else:

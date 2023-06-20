@@ -25,7 +25,8 @@ def main():
                         type=bool,
                         choices=[True, False])
     parser.add_argument('--bikes-allowed-exists-ok',
-                        help='If the `bikes_allowed` column does already exist, don\'t raise an error and set all undefined values to true.',
+                        help='If the `bikes_allowed` column does already exist, don\'t raise an error'
+                             ' and set all undefined values to true.',
                         dest='exists_ok',
                         default=False,
                         type=bool,
@@ -58,7 +59,8 @@ def modify_zip_file(source: Path, target: Path, modifications: dict[str, Callabl
 
     :param source: Path to source zip file.
     :param target: Path to target zip file.
-    :param modifications: Dictionary mapping the name of files to be modified to functions that perform the modifications.
+    :param modifications: Dictionary mapping the name of files to be modified
+     to functions that perform the modifications.
     :return: None
     """
     # Based on https://techoverflow.net/2020/11/11/how-to-modify-file-inside-a-zip-file-using-python/
@@ -88,7 +90,8 @@ def add_bikes_allowed(trips: IO[bytes], exists_ok: bool = False) -> str:
     By default, this method raises an error if the column does already exist.
 
     :param trips: CSV input
-    :param exists_ok: If the `bikes_allowed` column does already exist, don't raise an error and set all undefined values to true. Default: False.
+    :param exists_ok: If the `bikes_allowed` column does already exist,
+     don't raise an error and set all undefined values to true. Default: False.
     :return: CSV output
     """
 
@@ -112,7 +115,9 @@ def add_bikes_allowed(trips: IO[bytes], exists_ok: bool = False) -> str:
                 value = row[bikes_allowed_idx]
                 if value not in possible_values:
                     raise ValueError(
-                        f'The value {value} is not one of the expected values {possible_values} for the bikes_allowed field.')
+                        f'The value {value} is not one of the expected values'
+                        f' {possible_values} for the bikes_allowed field.'
+                    )
                 if value == 0:
                     # Value set to undefined.
                     # We set it to allowed.
@@ -136,7 +141,7 @@ def add_bikes_allowed(trips: IO[bytes], exists_ok: bool = False) -> str:
 
 def escape_double_quotes(file: IO[bytes]) -> str:
     """
-    Fixes an invalid CSV files with unescaped double quotes.
+    Fixes an invalid CSV file with unescaped double quotes.
 
     :param file:
     :return:

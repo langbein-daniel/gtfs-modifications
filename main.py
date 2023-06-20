@@ -57,9 +57,10 @@ def main():
                         default=[])
     args = parser.parse_args()
 
+    # Create a dict mapping filenames (from within the zip file)
+    # to functions which are to be performed on the content of the files.
     modifications = {}
-    if args.bikes_allowed:
-        modifications['trips.txt'] = lambda trips_txt: add_bikes_allowed(trips_txt, exists_ok=args.exists_ok)
+    # First, fix a broken CSV file!
     if len(args.escape_double_quotes) > 0:
         filenames: list[str] = args.escape_double_quotes
 
@@ -68,7 +69,15 @@ def main():
 
         for filename in filenames:
             assert filename.endswith('.txt')
-            modifications[filename] = escape_double_quotes
+            compose(modifications, filename, escape_double_quotes)
+    # Then, add/modify column of CSV file.
+    if args.bikes_allowed:
+        compose(
+            modifications,
+            'trips.txt',
+            lambda file_content: add_bikes_allowed(file_content, exists_ok=args.exists_ok)
+        )
+    # Lastly, check if a file shall be removed.
     if len(args.delete) > 0:
         filenames: list[str] = args.delete
 
@@ -76,20 +85,65 @@ def main():
         assert len(filenames) == len(list(set(filenames)))
 
         for filename in filenames:
-            modifications[filename] = lambda file: None
-
-    # TODO: adding bikes_allowed to trips.txt, escaping quotes in the same file
-    #       is currently not possible.
+            # We could use `compose(modifications, filename, lambda)` here as well,
+            # but any previous computations on `filename` are useless
+            # if the file is deleted anyway.
+            # Thus, we override the function in the modifications dict with a really fast one:
+            modifications[filename] = lambda file_content: None
 
     modify_zip_file(args.source_path, args.target_path, modifications)
 
 
-def modify_zip_file(source: Path, target: Path, modifications: dict[str, Callable[[str], bytes | str | None]]) -> None:
+def compose(modifications: dict[str, Callable[[str], str | None]],
+            filename: str,
+            fun: Callable[[str], str | None]) -> None:
+    """
+    The dict `modifications` contains filenames and functions to run on their content.
+
+    This method adds a new function `fun` for a given `filename` to this dict.
+
+    If the dict does already contain a function which shall be executed for the same file,
+    the new function will be executed on the result of the first function.
+
+    :param modifications:
+    :param filename:
+    :param fun:
+    :return:
+    """
+
+    def helper(f1: Callable[[str], str | None], f2: Callable[[str], str | None], file_content: str) -> str | None:
+        """
+        First, execute f1 with file_content.
+        If the result is None, directly return None.
+        Else, execute f2 with the result of f1.
+
+        :param f1:
+        :param f2:
+        :param file_content:
+        :return:
+        """
+        file_content = f1(file_content)
+        if file_content is None:
+            return file_content
+        else:
+            return f2(file_content)
+
+    if filename in modifications.keys():
+        first = modifications[filename]
+        second = fun
+        modifications[filename] = lambda file_content: helper(first, second, file_content)
+    else:
+        modifications[filename] = fun
+
+
+def modify_zip_file(source: Path,
+                    target: Path,
+                    modifications: dict[str, Callable[[str], str | None]]) -> None:
     """
     Iterates over all files in `source` zip file.
 
     If a file has an entry in the `modifications` dict, the corresponding function is called with the
-    source file as argument. The return value is then written to the `target` zip file.
+    content of the source file as argument. The return value is then written to the `target` zip file.
 
     Otherwise, the file is copied to `target` zip file without modifications.
 
@@ -119,7 +173,7 @@ def modify_zip_file(source: Path, target: Path, modifications: dict[str, Callabl
                         # Delete this file (don't write it to target zip file).
                         print('Deleting this file.')
                         continue
-                    elif isinstance(content, str) or isinstance(content, bytes):
+                    elif isinstance(content, str):
                         # Write to target zip file.
                         target_zf.writestr(zipinfo.filename, content, compress_type=8)
                     else:
@@ -161,7 +215,7 @@ def add_bikes_allowed(trips_txt: str, exists_ok: bool = False) -> str:
         if exists_ok:
             print('The bikes_allowed column does already exist. Replacing undefined with true.')
             bikes_allowed_idx = header.index('bikes_allowed')
-            possible_values = ['', 0, 1, 2]
+            possible_values = ['', '0', '1', '2']
             replaced_ct = 0
             for row in data[1:]:
                 value = row[bikes_allowed_idx]
@@ -218,11 +272,11 @@ def escape_double_quotes(file_content: str) -> str:
     return escaped_string
 
 
-def parse_csv(file: Iterable[str]) -> list[list[str]]:
+def parse_csv(lines: Iterable[str]) -> list[list[str]]:
     """
     Parse the CSV file and return it as 2D string list.
     """
-    reader = csv.reader(file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+    reader = csv.reader(lines, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     return [row for row in reader]
 
 

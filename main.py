@@ -11,13 +11,15 @@ from typing import IO, Iterable, Callable
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Modifies the source GTFS and saves it as target')
+    parser = argparse.ArgumentParser(description='Takes a source GTFS zip file, modifies it and saves it as zip')
     parser.add_argument('source_path',
                         help='Source GTFS zip file',
-                        type=Path)
+                        type=Path,
+                        metavar='SRC_GTFS_ZIP')
     parser.add_argument('target_path',
                         help='Target GTFS zip file',
-                        type=Path)
+                        type=Path,
+                        metavar='DST_GTFS_ZIP')
     parser.add_argument('--bikes-allowed',
                         help='Adds the column `bikes_allowed` and sets all of its values to true',
                         dest='bikes_allowed',
@@ -31,19 +33,31 @@ def main():
                         default=False,
                         type=bool,
                         choices=[True, False])
-    parser.add_argument('--escape-double-quotes-in-routes',
-                        help='Fixes an invalid routes.txt file with unescaped double quotes',
-                        dest='escape_double_quotes_in_routes',
-                        default=False,
-                        type=bool,
-                        choices=[True, False])
+    parser.add_argument('--escape-double-quotes',
+                        help='This argument takes the name of a .txt file from the GTFS zip file.'
+                             ' Unescaped double quotes in that file will be corrected.'
+                             ' This argument can be given multiple times (for different files).',
+                        dest='escape_double_quotes',
+                        action='append',
+                        type=str,
+                        metavar='TXT_FILENAME')
     args = parser.parse_args()
 
     modifications = {}
     if args.bikes_allowed:
         modifications['trips.txt'] = lambda file: add_bikes_allowed(file, exists_ok=args.exists_ok)
-    if args.escape_double_quotes_in_routes:
-        modifications['routes.txt'] = escape_double_quotes
+    if len(args.escape_double_quotes) > 0:
+        filenames: list[str] = args.escape_double_quotes
+
+        # Assert that each given filename is unique
+        assert len(filenames) == len(list(set(filenames)))
+
+        for filename in filenames:
+            assert filename.endswith('.txt')
+            modifications[filename] = escape_double_quotes
+
+    # TODO: adding bikes_allowed to trips.txt and escaping quotes in the same file
+    #       is currently not possible
 
     modify_zip_file(args.source_path, args.target_path, modifications)
 

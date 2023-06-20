@@ -20,6 +20,12 @@ def main():
                         help='Target GTFS zip file',
                         type=Path,
                         metavar='DST_GTFS_ZIP')
+    parser.add_argument('--change-stop-location-type',
+                        help='In stops.txt, change the value `2` in the `location_type` column to `0`.',
+                        dest='change_stop_locations',
+                        default=False,
+                        type=bool,
+                        choices=[True, False])
     parser.add_argument('--bikes-allowed',
                         help='Adds the column `bikes_allowed` and sets all of its values to true.'
                              ' Raises an exception if the column does already exist.',
@@ -77,6 +83,9 @@ def main():
             'trips.txt',
             lambda file_content: add_bikes_allowed(file_content, exists_ok=args.exists_ok)
         )
+    # Modify another column of CSV
+    if args.change_stop_locations:
+        compose(modifications, 'stops.txt', change_location_type)
     # Lastly, check if a file shall be removed.
     if len(args.delete) > 0:
         filenames: list[str] = args.delete
@@ -184,6 +193,37 @@ def modify_zip_file(source: Path,
                     target_zf.writestr(zipinfo.filename, infile.read(), compress_type=8)
 
 
+def change_location_type(stops_txt: str) -> str:
+    """
+    In stops.txt, change the value `2` in the `location_type` column to `0`.
+
+    This fixes German wide the DELFI GTFS dataset which hase some stops marked as exit/entrance (of stations)
+    which are actually the locations where one enters/leaves a vehicle.
+    """
+    data = parse_csv(stops_txt.splitlines())
+    header = data[0]
+
+    column_name = 'location_type'
+    if column_name in header:
+        print(f'The {column_name} column does already exist. Replacing values `2` with `0`.')
+        column_idx = header.index(column_name)
+        replaced_ct = 0
+        for row in data[1:]:
+            value = row[column_idx]
+            if value == '2':
+                row[column_idx] = '0'
+                replaced_ct += 1
+        print(f'{100 * replaced_ct / len(data[1:])}% of the {column_name} entries were changed.\n'
+              f'{replaced_ct} entries have been set to 0.')
+    else:
+        print(f'There is no {column_name} column.')
+
+    f = StringIO()
+    write_csv(f, data)
+
+    return f.getvalue()
+
+
 def add_bikes_allowed(trips_txt: str, exists_ok: bool = False) -> str:
     """
     Adds the column `bikes_allowed` to the CSV file and sets all of its values to true.
@@ -211,35 +251,32 @@ def add_bikes_allowed(trips_txt: str, exists_ok: bool = False) -> str:
     data = parse_csv(trips_txt.splitlines())
     header = data[0]
 
-    if 'bikes_allowed' in header:
+    column_name = 'bikes_allowed'
+    if column_name in header:
         if exists_ok:
-            print('The bikes_allowed column does already exist. Replacing undefined with true.')
-            bikes_allowed_idx = header.index('bikes_allowed')
+            print(f'The {column_name} column does already exist. Replacing undefined with true.')
+            column_idx = header.index(column_name)
             possible_values = ['', '0', '1', '2']
             replaced_ct = 0
             for row in data[1:]:
-                value = row[bikes_allowed_idx]
+                value = row[column_idx]
                 if value not in possible_values:
                     raise ValueError(
                         f'The value {value} is not one of the expected values'
-                        f' {possible_values} for the bikes_allowed field.'
+                        f' {possible_values} for the {column_name} field.'
                     )
                 if value == 0:
                     # Value set to undefined.
                     # We set it to allowed.
-                    row[bikes_allowed_idx] = '1'
+                    row[column_idx] = '1'
                     replaced_ct += 1
-
-            if replaced_ct == 0:
-                print('None of the bikes_allowed entries were undefined.')
-            else:
-                print(f'{100 * len(data[1:]) / replaced_ct}% of the bikes_allowed entries were undefined.\n'
-                      f'{replaced_ct} undefined entries have been set to true.')
+            print(f'{100 * replaced_ct / len(data[1:])}% of the {column_name} entries were undefined.\n'
+                  f'{replaced_ct} undefined entries have been set to true.')
         else:
-            raise ValueError('Expected the bikes_allowed column to be missing.')
+            raise ValueError(f'Expected the {column_name} column to be missing.')
     else:
-        print('There is no bikes_allowed column. Adding it with all values set to true.')
-        header.append('bikes_allowed')
+        print(f'There is no {column_name} column. Adding it with all values set to true.')
+        header.append(column_name)
         for row in data[1:]:
             row.append('1')
 

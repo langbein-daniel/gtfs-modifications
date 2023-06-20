@@ -49,7 +49,7 @@ def main():
 
     modifications = {}
     if args.bikes_allowed:
-        modifications['trips.txt'] = lambda file: add_bikes_allowed(file, exists_ok=args.exists_ok)
+        modifications['trips.txt'] = lambda trips_txt: add_bikes_allowed(trips_txt, exists_ok=args.exists_ok)
     if len(args.escape_double_quotes) > 0:
         filenames: list[str] = args.escape_double_quotes
 
@@ -66,7 +66,7 @@ def main():
     modify_zip_file(args.source_path, args.target_path, modifications)
 
 
-def modify_zip_file(source: Path, target: Path, modifications: dict[str, Callable[[IO[bytes]], bytes | str]]) -> None:
+def modify_zip_file(source: Path, target: Path, modifications: dict[str, Callable[[str], bytes | str]]) -> None:
     """
     Iterates over all files in `source` zip file.
 
@@ -94,7 +94,9 @@ def modify_zip_file(source: Path, target: Path, modifications: dict[str, Callabl
                 if zipinfo.filename in modifications.keys():
                     print(f'Modifying {zipinfo.filename} ...')
                     # Modify file content.
-                    content = modifications[zipinfo.filename](infile)
+                    original_content: str = TextIOWrapper(infile, 'utf-8').read()
+                    content = modifications[zipinfo.filename](original_content)
+                    assert isinstance(content, str) or isinstance(content, bytes)
                     # Write to target zip file.
                     target_zf.writestr(zipinfo.filename, content)
                 else:
@@ -103,13 +105,13 @@ def modify_zip_file(source: Path, target: Path, modifications: dict[str, Callabl
                     target_zf.writestr(zipinfo.filename, infile.read())
 
 
-def add_bikes_allowed(trips: IO[bytes], exists_ok: bool = False) -> str:
+def add_bikes_allowed(trips_txt: str, exists_ok: bool = False) -> str:
     """
     Adds the column `bikes_allowed` to the CSV file and sets all of its values to true.
 
     By default, this method raises an error if this column does already exist.
 
-    :param trips: CSV input
+    :param trips_txt: Content of trips.txt CSV file
     :param exists_ok: If the `bikes_allowed` column does already exist, don't raise an error.
      All undefined values of the `bikes_allowed` column are set to true.
      Other values are left as they are.
@@ -123,8 +125,11 @@ def add_bikes_allowed(trips: IO[bytes], exists_ok: bool = False) -> str:
     #   1 -> allowed
     #   2 -> not allowed
 
-    trips_str = TextIOWrapper(trips, 'utf-8')
-    data = parse_csv(trips_str)
+    # trips: IO[bytes]
+    # trips_str = TextIOWrapper(trips, 'utf-8')
+    # data = parse_csv(trips_str)
+
+    data = parse_csv(trips_txt.splitlines())
     header = data[0]
 
     if 'bikes_allowed' in header:
@@ -161,14 +166,13 @@ def add_bikes_allowed(trips: IO[bytes], exists_ok: bool = False) -> str:
     return f.getvalue()
 
 
-def escape_double_quotes(file: IO[bytes]) -> str:
+def escape_double_quotes(file_content: str) -> str:
     """
     Fixes an invalid CSV file with unescaped double quotes.
 
-    :param file:
+    :param file_content:
     :return:
     """
-    string = TextIOWrapper(file, 'utf-8').read()
 
     # Example:
     #   "2-11-B-j23-1","","RB 11","Fürth  -  Zirndorf  -  Cadolzburg  ( "Rangaubahn" )","2","2A9F6F","000000"
@@ -178,7 +182,7 @@ def escape_double_quotes(file: IO[bytes]) -> str:
     # All double-quotes that are not escaped and don't stand before or after a comma.
     pattern = r'([^,^"^\n])"([^,^"^\n])'
     # Escape the double-quote by adding a second double-quote.
-    escaped_string, ct = re.subn(pattern, r'\1""\2', string)
+    escaped_string, ct = re.subn(pattern, r'\1""\2', file_content)
 
     print(f'Escaped {ct} occurrences of ".')
 

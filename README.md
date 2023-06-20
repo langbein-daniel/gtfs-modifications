@@ -9,7 +9,7 @@ See [BikeTripPlanner README](https://github.com/langbein-daniel/BikeTripPlanner#
 ```
 usage: main.py [-h] [--bikes-allowed {True,False}]
                [--bikes-allowed-exists-ok {True,False}]
-               [--escape-double-quotes TXT_FILENAME]
+               [--escape-double-quotes TXT_FILENAME] [--delete FILENAME]
                SRC_GTFS_ZIP DST_GTFS_ZIP
 
 Takes a source GTFS zip file, modifies it and saves it as zip
@@ -34,5 +34,9 @@ options:
                         This argument takes the name of a .txt file from the
                         GTFS zip file. Unescaped double quotes in that file
                         will be corrected. This argument can be given multiple
+                        times (for different files).
+  --delete FILENAME     This argument takes the name of a file from the GTFS
+                        zip file. It is deleted (not included in the target
+                        GTFS zip file). This argument can be given multiple
                         times (for different files).
 ```

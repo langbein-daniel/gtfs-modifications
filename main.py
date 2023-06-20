@@ -45,6 +45,14 @@ def main():
                         action='append',
                         type=str,
                         metavar='TXT_FILENAME')
+    parser.add_argument('--delete',
+                        help='This argument takes the name of a file from the GTFS zip file.'
+                             ' It is deleted (not included in the target GTFS zip file).'
+                             ' This argument can be given multiple times (for different files).',
+                        dest='delete',
+                        action='append',
+                        type=str,
+                        metavar='FILENAME')
     args = parser.parse_args()
 
     modifications = {}
@@ -59,14 +67,22 @@ def main():
         for filename in filenames:
             assert filename.endswith('.txt')
             modifications[filename] = escape_double_quotes
+    if len(args.delete) > 0:
+        filenames: list[str] = args.delete
 
-    # TODO: adding bikes_allowed to trips.txt and escaping quotes in the same file
-    #       is currently not possible
+        # Assert that each given filename is unique
+        assert len(filenames) == len(list(set(filenames)))
+
+        for filename in filenames:
+            modifications[filename] = lambda file: None
+
+    # TODO: adding bikes_allowed to trips.txt, escaping quotes in the same file
+    #       is currently not possible.
 
     modify_zip_file(args.source_path, args.target_path, modifications)
 
 
-def modify_zip_file(source: Path, target: Path, modifications: dict[str, Callable[[str], bytes | str]]) -> None:
+def modify_zip_file(source: Path, target: Path, modifications: dict[str, Callable[[str], bytes | str | None]]) -> None:
     """
     Iterates over all files in `source` zip file.
 
@@ -96,9 +112,16 @@ def modify_zip_file(source: Path, target: Path, modifications: dict[str, Callabl
                     # Modify file content.
                     original_content: str = TextIOWrapper(infile, 'utf-8').read()
                     content = modifications[zipinfo.filename](original_content)
-                    assert isinstance(content, str) or isinstance(content, bytes)
-                    # Write to target zip file.
-                    target_zf.writestr(zipinfo.filename, content)
+
+                    if content is None:
+                        # Delete this file (don't write it to target zip file).
+                        print('Deleting this file.')
+                        continue
+                    elif isinstance(content, str) or isinstance(content, bytes):
+                        # Write to target zip file.
+                        target_zf.writestr(zipinfo.filename, content)
+                    else:
+                        raise ValueError()
                 else:
                     # Copy to target zip file without modifications.
                     print(f'Copying {zipinfo.filename} without modifications.')

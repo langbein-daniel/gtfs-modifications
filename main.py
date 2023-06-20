@@ -92,12 +92,14 @@ def modify_zip_file(source: Path, target: Path, modifications: dict[str, Callabl
             infile: IO[bytes]
             with source_zf.open(zipinfo) as infile:
                 if zipinfo.filename in modifications.keys():
+                    print(f'Modifying {zipinfo.filename} ...')
                     # Modify file content.
                     content = modifications[zipinfo.filename](infile)
                     # Write to target zip file.
                     target_zf.writestr(zipinfo.filename, content)
                 else:
                     # Copy to target zip file without modifications.
+                    print(f'Copying {zipinfo.filename} without modifications.')
                     target_zf.writestr(zipinfo.filename, infile.read())
 
 

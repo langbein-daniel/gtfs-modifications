@@ -44,7 +44,8 @@ def main():
                         dest='escape_double_quotes',
                         action='append',
                         type=str,
-                        metavar='TXT_FILENAME')
+                        metavar='TXT_FILENAME',
+                        default=[])
     parser.add_argument('--delete',
                         help='This argument takes the name of a file from the GTFS zip file.'
                              ' It is deleted (not included in the target GTFS zip file).'
@@ -52,7 +53,8 @@ def main():
                         dest='delete',
                         action='append',
                         type=str,
-                        metavar='FILENAME')
+                        metavar='FILENAME',
+                        default=[])
     args = parser.parse_args()
 
     modifications = {}

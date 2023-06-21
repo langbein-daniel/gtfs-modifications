@@ -213,7 +213,7 @@ def change_location_type(stops_txt: str) -> str:
             if value == '2':
                 row[column_idx] = '0'
                 replaced_ct += 1
-        print(f'{100 * replaced_ct / len(data[1:])}% of the {column_name} entries were changed.\n'
+        print(f'{round(100 * replaced_ct / len(data[1:]), 2)}% of the {column_name} entries were changed.\n'
               f'{replaced_ct} entries have been set to 0.')
     else:
         print(f'There is no {column_name} column.')
@@ -270,7 +270,7 @@ def add_bikes_allowed(trips_txt: str, exists_ok: bool = False) -> str:
                     # We set it to allowed.
                     row[column_idx] = '1'
                     replaced_ct += 1
-            print(f'{100 * replaced_ct / len(data[1:])}% of the {column_name} entries were undefined.\n'
+            print(f'{round(100 * replaced_ct / len(data[1:]), 2)}% of the {column_name} entries were undefined.\n'
                   f'{replaced_ct} undefined entries have been set to true.')
         else:
             raise ValueError(f'Expected the {column_name} column to be missing.')

@@ -164,9 +164,18 @@ def modify_zip_file(source: Path,
     """
     # Based on https://techoverflow.net/2020/11/11/how-to-modify-file-inside-a-zip-file-using-python/
 
+    # Reduce size of target zip file.
+    # We have to set this while opening the target zip file
+    # as well as while writing individual files to it.
+    #
+    # If we do only specify it while writing individual files,
+    # the zip file can't be opened by all programs.
+    compression_level = 8
+
     source_zf: zipfile.ZipFile
     target_zf: zipfile.ZipFile
-    with zipfile.ZipFile(source, 'r') as source_zf, zipfile.ZipFile(target, 'w') as target_zf:
+    with zipfile.ZipFile(source, 'r') as source_zf, \
+            zipfile.ZipFile(target, 'w', compresslevel=compression_level) as target_zf:
         # Iterate over files in `source_zf`
         zipinfo: zipfile.ZipInfo
         for zipinfo in source_zf.infolist():
@@ -184,13 +193,13 @@ def modify_zip_file(source: Path,
                         continue
                     elif isinstance(content, str):
                         # Write to target zip file.
-                        target_zf.writestr(zipinfo.filename, content, compress_type=8)
+                        target_zf.writestr(zipinfo.filename, content, compress_type=compression_level)
                     else:
                         raise ValueError()
                 else:
                     # Copy to target zip file without modifications.
                     print(f'Copying {zipinfo.filename} without modifications.')
-                    target_zf.writestr(zipinfo.filename, infile.read(), compress_type=8)
+                    target_zf.writestr(zipinfo.filename, infile.read(), compress_type=compression_level)
 
 
 def change_location_type(stops_txt: str) -> str:

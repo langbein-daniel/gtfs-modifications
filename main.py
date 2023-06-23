@@ -11,7 +11,7 @@ from typing import IO, Iterable, Callable
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Takes a source GTFS zip file, modifies it and saves it as zip')
+    parser = argparse.ArgumentParser(description='Takes a GTFS zip file, modifies it and saves it as zip file')
     parser.add_argument('source_path',
                         help='Source GTFS zip file',
                         type=Path,

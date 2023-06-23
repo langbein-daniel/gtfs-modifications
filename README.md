@@ -12,7 +12,7 @@ usage: main.py [-h] [--bikes-allowed {True,False}]
                [--escape-double-quotes TXT_FILENAME] [--delete FILENAME]
                SRC_GTFS_ZIP DST_GTFS_ZIP
 
-Takes a source GTFS zip file, modifies it and saves it as zip
+Takes a GTFS zip file, modifies it and saves it as zip file
 
 positional arguments:
   SRC_GTFS_ZIP          Source GTFS zip file
